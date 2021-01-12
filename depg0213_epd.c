@@ -177,6 +177,10 @@ depg0213_ret_t depg0213_epd_deepsleep(depg0213_epd_t *epd) {
 
 depg0213_ret_t depg0213_epd_direction(depg0213_epd_t *epd, depg0213_direction_t direction) {
 
+    if(epd->deep_sleep) {
+        DEPG0213_ERROR_CHECK(depg0213_epd_init(epd));
+    }
+
     // Default mode: VERTICAL, X: 0x0C->0x00, Y: 0xD3->0x00, AM-|Y-|X-
     uint8_t cmd_ram_x_address[] = { 0x44, 0x0C, 0x00 }; // CMD, START, END
     uint8_t cmd_ram_y_address[] = { 0x45, 0xD3, 0x00, 0x00, 0x00 }; // CMD, START_L, START_H, END_L, END_H
