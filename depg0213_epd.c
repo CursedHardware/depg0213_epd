@@ -52,6 +52,17 @@ depg0213_ret_t _depg0213_software_reset(depg0213_epd_t *epd) {
     uint8_t sw_reset_cmd = 0x12; // SW RST
 
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &sw_reset_cmd, 0x01));
+    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
+
+    return DEPG0213_OK;
+}
+
+depg0213_ret_t _depg0213_hardware_reset(depg0213_epd_t *epd) {
+
+    DEPG0213_ERROR_CHECK(epd->cb.reset_cb(epd->user_data));
+    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
+
+    epd->deep_sleep = 0;
 
     return DEPG0213_OK;
 }
@@ -63,6 +74,9 @@ depg0213_ret_t _depg0213_init_seq(depg0213_epd_t *epd) {
         DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &DEPG0213_PANEL_SELECTION[i + 1], DEPG0213_PANEL_SELECTION[i] + 1));
         i += DEPG0213_PANEL_SELECTION[i] + 2;
     }
+
+    // The end of the sequence is load LUT from OTP memory.
+    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
 
     return DEPG0213_OK;
 }
@@ -80,24 +94,19 @@ depg0213_ret_t _depg0213_load_lut(depg0213_epd_t *epd) {
 #endif
 
 depg0213_ret_t depg0213_epd_init(depg0213_epd_t *epd) {
-    // HW Reset
-    DEPG0213_ERROR_CHECK(epd->cb.reset_cb(epd->user_data));
-    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
 
-    // SW Reset
+    // Software reset follows hardware reset
+    DEPG0213_ERROR_CHECK(_depg0213_hardware_reset(epd));
     DEPG0213_ERROR_CHECK(_depg0213_software_reset(epd));
-    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
 
+    // Setup default direction
     DEPG0213_ERROR_CHECK(depg0213_epd_direction(epd, DEPG0213_VERTICAL));
 
     DEPG0213_ERROR_CHECK(_depg0213_init_seq(epd));
-    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
 
 #if(!DEPG0213_LUT_OTP)
     DEPG0213_ERROR_CHECK(_depg0213_load_lut(epd));
 #endif
-
-    epd->deep_sleep = 0;
 
     return DEPG0213_OK;
 }
