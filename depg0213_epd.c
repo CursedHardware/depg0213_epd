@@ -9,10 +9,7 @@ uint8_t depg0213_dke_init_sequence[] = {
     0x01, 0x03, 0x17, // Gate voltage settings
     0x03, 0x04, 0x41, 0xAC, 0x32, // Source voltage settings
     0x01, 0x3A, 0x02, // Frame setting 1
-    0x01, 0x3B, 0x0D, // Frame setting 2
-    0x01, 0x18, 0x80, // Set built-in temperature sensor
-    0x01, 0x22, 0xB1, // Load LUT 1
-    0x00, 0x20 // Load LUT 2
+    0x01, 0x3B, 0x0D  // Frame setting 2
 };
 
 uint8_t depg0213_dke_lut_full[] = {
@@ -75,23 +72,25 @@ depg0213_ret_t _depg0213_init_seq(depg0213_epd_t *epd) {
         i += DEPG0213_PANEL_SELECTION[i] + 2;
     }
 
-    // The end of the sequence is load LUT from OTP memory.
-    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
-
     return DEPG0213_OK;
 }
-
-#if(!DEPG0213_LUT_OTP)
 
 depg0213_ret_t _depg0213_load_lut(depg0213_epd_t *epd) {
+#if(!DEPG0213_LUT_OTP)
     uint8_t lut_command = 0x32;
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command, 0x01));
-    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, DEPG0213_LUT_FULL_SELECTION, 70));
+    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, DEPG0213_LUT_FULL_SELECTION, 70));
+#else
+    uint8_t lut_command[2] = { 0x18, 0x80, 0x22, 0xB1, 0x20 };
+    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, lut_command, 0x02));
+    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command[2], 0x02));
+    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command[4], 0x01));
+    // The end of the sequence is load LUT from OTP memory.
+    DEPG0213_ERROR_CHECK(epd->cb.poll_busy_cb(epd->user_data));
+#endif
 
     return DEPG0213_OK;
 }
-
-#endif
 
 depg0213_ret_t depg0213_epd_init(depg0213_epd_t *epd) {
 
@@ -102,11 +101,11 @@ depg0213_ret_t depg0213_epd_init(depg0213_epd_t *epd) {
     // Setup default direction
     DEPG0213_ERROR_CHECK(depg0213_epd_direction(epd, DEPG0213_VERTICAL));
 
+    // Send initialization chants
     DEPG0213_ERROR_CHECK(_depg0213_init_seq(epd));
 
-#if(!DEPG0213_LUT_OTP)
+    // Write LUT
     DEPG0213_ERROR_CHECK(_depg0213_load_lut(epd));
-#endif
 
     return DEPG0213_OK;
 }
