@@ -81,7 +81,7 @@ depg0213_ret_t _depg0213_load_lut(depg0213_epd_t *epd) {
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command, 0x01));
     DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, DEPG0213_LUT_FULL_SELECTION, 70));
 #else
-    uint8_t lut_command[2] = { 0x18, 0x80, 0x22, 0xB1, 0x20 };
+    uint8_t lut_command[5] = { 0x18, 0x80, 0x22, 0xB1, 0x20 };
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, lut_command, 0x02));
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command[2], 0x02));
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &lut_command[4], 0x01));
