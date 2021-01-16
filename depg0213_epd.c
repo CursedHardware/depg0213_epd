@@ -167,8 +167,6 @@ depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
     DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, red_image, 2756)); // 104 / 8 * 212
 
-    DEPG0213_ERROR_CHECK(depg0213_epd_update(epd));
-
     return DEPG0213_OK;
 }
 

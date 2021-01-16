@@ -5,7 +5,9 @@
 
 #define DEPG0213_PANEL_SELECTION depg0213_dke_init_sequence
 
+#ifndef DEPG0213_LUT_OTP
 #define DEPG0213_LUT_OTP 0
+#endif
 
 #if(!DEPG0213_LUT_OTP)
 
