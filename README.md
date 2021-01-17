@@ -64,3 +64,4 @@ self-increment direction of the internal pointer, so `VERTICAL` modes are not af
 Shift operation needs to be different for both `HORIZONTAL_REVERSE` and `VERTICAL_REVERSE` directions.
 
 ![A figure explaining the layout of the panel](assets/panel_organization.png)
+![A figure explaining pixel organization](assets/pixel_organization.png)
