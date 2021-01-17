@@ -164,12 +164,20 @@ depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t
 
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, command, 0x02));
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &command[2], 0x03));
-    uint8_t wr_command = 0x24;
-    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
-    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, bw_image, transfer_bytes));
-    wr_command = 0x26;
-    DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
-    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, red_image, transfer_bytes));
+
+    uint8_t wr_command;
+
+    if(bw_image != NULL) {
+        wr_command = 0x24;
+        DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
+        DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, bw_image, transfer_bytes));
+    }
+
+    if(red_image != NULL) {
+        wr_command = 0x26;
+        DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
+        DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, red_image, transfer_bytes));
+    }
 
     return DEPG0213_OK;
 }
@@ -206,7 +214,7 @@ depg0213_ret_t depg0213_epd_window(depg0213_epd_t *epd, depg0213_direction_t dir
         if(x_end > 211 || y_end > 103) {
             return DEPG0213_ERROR;
         }
-        if(x_start % 8 != 0) return DEPG0213_ERROR;
+        if(y_start % 8 != 0) return DEPG0213_ERROR;
         if((y_end + 1) % 8 != 0) return DEPG0213_ERROR;
     }
 
