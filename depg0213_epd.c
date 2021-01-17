@@ -98,9 +98,6 @@ depg0213_ret_t depg0213_epd_init(depg0213_epd_t *epd) {
     DEPG0213_ERROR_CHECK(_depg0213_hardware_reset(epd));
     DEPG0213_ERROR_CHECK(_depg0213_software_reset(epd));
 
-    // Setup default direction
-    DEPG0213_ERROR_CHECK(depg0213_epd_direction(epd, DEPG0213_VERTICAL));
-
     // Send initialization chants
     DEPG0213_ERROR_CHECK(_depg0213_init_seq(epd));
 
@@ -125,47 +122,54 @@ depg0213_ret_t depg0213_epd_update(depg0213_epd_t *epd) {
     return DEPG0213_OK;
 }
 
-depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t *red_image) {
+depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t *red_image,
+                                 uint16_t x_start, uint16_t x_end, uint16_t y_start, uint16_t y_end) {
 
     if(epd->deep_sleep) {
         DEPG0213_ERROR_CHECK(depg0213_epd_init(epd));
     }
 
-    uint8_t command[5] = { 0x4E, 0x0C, 0x4F, 0xD3, 0x00 };
+    DEPG0213_ERROR_CHECK(depg0213_epd_window(epd, epd->direction, x_start, x_end, y_start, y_end));
+
+    uint8_t command[5] = { 0x4E, 0x0C - x_start / 8, 0x4F, 0xD3 - y_start, 0x00 };
 
     switch(epd->direction) {
         case DEPG0213_VERTICAL_INVERSE:
         // X->0x00
-        command[1] = 0x00;
+        command[1] = x_start / 8;
 
         // Y->0x00
-        command[3] = 0x00;
+        command[3] = y_start;
         break;
-        case DEPG0213_HORIZONTAL:
+        case DEPG0213_HORIZONTAL: // X-Y inversed
         // X->0x00
-        command[1] = 0x00;
+        command[1] = y_start / 8;
 
-        // NO CHANGE FOR Y AXIS
+        // Y->0xD3
+        command[3] = 0xD3 - x_start;
         break;
-        case DEPG0213_HORIZONTAL_INVERSE:
-        // NO CHANGE FOR X AXIS
+        case DEPG0213_HORIZONTAL_INVERSE: // X-Y inversed
+        // X->0x0C
+        command[1] = 0x0C - y_start / 8;
 
         // Y-> 0x00
-        command[3] = 0x00;
+        command[3] = x_start;
         break;
         case DEPG0213_VERTICAL:
         default:
         break;
     }
 
+    uint16_t transfer_bytes = (y_end - y_start + 1) * (x_end - x_start + 1) / 8;
+
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, command, 0x02));
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &command[2], 0x03));
     uint8_t wr_command = 0x24;
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
-    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, bw_image, 2756)); // 104 / 8 * 212
+    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, bw_image, transfer_bytes));
     wr_command = 0x26;
     DEPG0213_ERROR_CHECK(epd->cb.write_cmd_cb(epd->user_data, &wr_command, 0x01));
-    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, red_image, 2756)); // 104 / 8 * 212
+    DEPG0213_ERROR_CHECK(epd->cb.write_data_cb(epd->user_data, red_image, transfer_bytes));
 
     return DEPG0213_OK;
 }
@@ -181,46 +185,69 @@ depg0213_ret_t depg0213_epd_deepsleep(depg0213_epd_t *epd) {
     return DEPG0213_OK;
 }
 
-depg0213_ret_t depg0213_epd_direction(depg0213_epd_t *epd, depg0213_direction_t direction) {
+depg0213_ret_t depg0213_epd_window(depg0213_epd_t *epd, depg0213_direction_t direction,
+                                   uint16_t x_start, uint16_t x_end, uint16_t y_start, uint16_t y_end) {
 
     if(epd->deep_sleep) {
         DEPG0213_ERROR_CHECK(depg0213_epd_init(epd));
     }
 
+    // Sanity checks
+    if(x_end < x_start || y_end < y_start) return DEPG0213_ERROR;
+
+    if(direction == DEPG0213_VERTICAL || direction == DEPG0213_VERTICAL_INVERSE) {
+        if(x_end > 103 || y_end > 211) {
+            return DEPG0213_ERROR;
+        }
+        if(x_start % 8 != 0) return DEPG0213_ERROR;
+        if((x_end + 1) % 8 != 0) return DEPG0213_ERROR;
+    }
+    else {
+        if(x_end > 211 || y_end > 103) {
+            return DEPG0213_ERROR;
+        }
+        if(x_start % 8 != 0) return DEPG0213_ERROR;
+        if((y_end + 1) % 8 != 0) return DEPG0213_ERROR;
+    }
+
     // Default mode: VERTICAL, X: 0x0C->0x00, Y: 0xD3->0x00, AM-|Y-|X-
-    uint8_t cmd_ram_x_address[] = { 0x44, 0x0C, 0x00 }; // CMD, START, END
-    uint8_t cmd_ram_y_address[] = { 0x45, 0xD3, 0x00, 0x00, 0x00 }; // CMD, START_L, START_H, END_L, END_H
+    uint8_t cmd_ram_x_address[] = { 0x44, 0x0C - x_start / 8, 0x0C - x_end / 8 }; // CMD, START, END
+    uint8_t cmd_ram_y_address[] = { 0x45, 0xD3 - y_start, 0x00, 0xD3 - y_end, 0x00 }; // CMD, START_L, START_H, END_L, END_H
     uint8_t cmd_data_entry[] = { 0x11, 0x00 }; // CMD, SCAN_X->DESC, SCAN_Y->DESC, AM->0 [2:0]=AM|Y+|X+
 
     switch(direction) {
         case DEPG0213_VERTICAL_INVERSE:
         // START: 0x00, END: 0x0C
-        cmd_ram_x_address[1] = 0x00;
-        cmd_ram_x_address[2] = 0x0C;
+        cmd_ram_x_address[1] = x_start / 8;
+        cmd_ram_x_address[2] = x_end / 8;
 
         // START: 0x00, END: 0xD3
-        cmd_ram_y_address[1] = 0x00;
-        cmd_ram_y_address[3] = 0xD3;
+        cmd_ram_y_address[1] = y_start;
+        cmd_ram_y_address[3] = y_end;
 
         // AM-|Y+|X+
         cmd_data_entry[1] = 0x03;
         break;
         case DEPG0213_HORIZONTAL:
         // START: 0x00, END: 0x0C
-        cmd_ram_x_address[1] = 0x00;
-        cmd_ram_x_address[2] = 0x0C;
+        cmd_ram_x_address[1] = y_start / 8;
+        cmd_ram_x_address[2] = y_end / 8;
 
         // NO CHANGE FOR Y AXIS
+        cmd_ram_y_address[1] = 0xD3 - x_start;
+        cmd_ram_y_address[3] = 0xD3 - x_end;
 
         // AM+|Y-|X+
         cmd_data_entry[1] = 0x05;
         break;
         case DEPG0213_HORIZONTAL_INVERSE:
         // NO CHANGE FOR X AXIS
+        cmd_ram_x_address[1] = 0x0C - y_start / 8;
+        cmd_ram_x_address[2] = 0x0C - y_end / 8;
 
         // START: 0x00, END: 0xD3
-        cmd_ram_y_address[1] = 0x00;
-        cmd_ram_y_address[3] = 0xD3;
+        cmd_ram_y_address[1] = x_start;
+        cmd_ram_y_address[3] = x_end;
 
         // AM+|Y+|X-
         cmd_data_entry[1] = 0x06;

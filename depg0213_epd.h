@@ -2,6 +2,7 @@
 #define __depg0213_EPD_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define DEPG0213_PANEL_SELECTION depg0213_dke_init_sequence
 
@@ -46,8 +47,10 @@ typedef struct {
 
 depg0213_ret_t depg0213_epd_init(depg0213_epd_t *epd);
 depg0213_ret_t depg0213_epd_update(depg0213_epd_t *epd);
-depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t *red_image);
+depg0213_ret_t depg0213_epd_load(depg0213_epd_t *epd, uint8_t *bw_image, uint8_t *red_image,
+                                 uint16_t x_start, uint16_t x_end, uint16_t y_start, uint16_t y_end);
 depg0213_ret_t depg0213_epd_deepsleep(depg0213_epd_t *epd);
-depg0213_ret_t depg0213_epd_direction(depg0213_epd_t *epd, depg0213_direction_t direction);
+depg0213_ret_t depg0213_epd_window(depg0213_epd_t *epd, depg0213_direction_t direction,
+                                   uint16_t x_start, uint16_t x_end, uint16_t y_start, uint16_t y_end);
 
 #endif

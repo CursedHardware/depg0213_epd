@@ -55,9 +55,12 @@ depg0213_ret_t _epd_write_data_cb(void *handle, uint8_t *data, uint16_t len) {
 
 ## Notes:
 
-Pixels of this panel is organized in the similar way as SSD1306, but has 212 columns and 13 pages.  
+* Pixels of this panel is organized in the similar way as SSD1306, but has 212 columns and 13 pages.  
 Therefore, when `HORIZONTAL` or `HORIZONTAL_INVERSE` modes are selected, the frame needs to be  
 transferred as pages. However, this controller chip has the function which can change the  
 self-increment direction of the internal pointer, so `VERTICAL` modes are not affected anyway. 
+
+* In `REVERSE` modes, the scanning direction of pixels in one byte are also inversed, therefore,
+Shift operation needs to be different for both `HORIZONTAL_REVERSE` and `VERTICAL_REVERSE` directions.
 
 ![A figure explaining the layout of the panel](assets/panel_organization.png)
